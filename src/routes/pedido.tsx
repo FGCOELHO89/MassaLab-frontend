@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { apiFetch, ApiError, type AuthUser } from "@/lib/api";
+import { useEffect, useState } from "react";
+import { apiFetch, ApiError } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,14 +17,29 @@ export const Route = createFileRoute("/pedido")({
   component: OrderSummaryPage,
 });
 
-type CartItem = { id: number; nome: string; preco: string; qty: number };
-type OrderState = { tableNumber: string; cart: Record<number, number> };
+type CartLine =
+  | { id: string; tipo: "item"; itemId: number; quantidade: number }
+  | {
+      id: string;
+      tipo: "monte_massa";
+      massaId: number;
+      massaNome: string;
+      molhoId: number | null;
+      molhoNome: string | null;
+      ingredientesIds: number[];
+      ingredientesNomes: string[];
+      precoUnitario: number;
+      quantidade: number;
+    };
+
+type ApiItem = { id: number; nome: string; preco: string };
+type OrderState = { tableNumber: string; cart: CartLine[] };
 
 function OrderSummaryPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [order, setOrder] = useState<OrderState | null>(null);
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [apiItems, setApiItems] = useState<ApiItem[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -34,52 +49,80 @@ function OrderSummaryPage() {
       if (raw) {
         const parsed = JSON.parse(raw) as OrderState;
         setOrder(parsed);
-        // Busca detalhes dos itens do cardápio para exibir nome/preço
         if (user) {
-         apiFetch<{ itens: (CartItem & { disponivel: boolean })[] }>(
-            `/restaurante/${user.restauranteId}/cardapio`
-          ).then((data) => {
-            const allItems = data.itens;
-            const resolved: CartItem[] = Object.entries(parsed.cart).map(([id, qty]) => {
-              const found = allItems.find((i) => i.id === Number(id));
-              return found ? { id: found.id, nome: found.nome, preco: found.preco, qty: Number(qty) } : null;
-            }).filter(Boolean) as CartItem[];
-            setCartItems(resolved);
-          });
+          apiFetch<{ itens: ApiItem[] }>(`/restaurante/${user.restauranteId}/cardapio`)
+            .then((data) => setApiItems(data.itens))
+            .catch(() => {});
         }
       }
     } catch { /* ignore */ }
     setLoaded(true);
   }, [user]);
 
-  const total = useMemo(() =>
-    cartItems.reduce((s, i) => s + parseFloat(i.preco) * i.qty, 0),
-    [cartItems]
-  );
-  const count = useMemo(() =>
-    cartItems.reduce((s, i) => s + i.qty, 0),
-    [cartItems]
-  );
+  // Monta a lista de linhas com nome e preço resolvidos
+  const linhas = (order?.cart ?? []).map((line) => {
+    if (line.tipo === "item") {
+      const found = apiItems.find((i) => i.id === line.itemId);
+      const preco = parseFloat(found?.preco ?? "0");
+      return {
+        id: line.id,
+        nome: found?.nome ?? "Item",
+        qty: line.quantidade,
+        preco,
+        subtotal: preco * line.quantidade,
+        detalhe: null as string | null,
+      };
+    }
+    return {
+      id: line.id,
+      nome: line.massaNome,
+      qty: line.quantidade,
+      preco: line.precoUnitario,
+      subtotal: line.precoUnitario * line.quantidade,
+      detalhe: [
+        line.molhoNome ? `Molho: ${line.molhoNome}` : null,
+        line.ingredientesNomes.length > 0 ? `Ingredientes: ${line.ingredientesNomes.join(", ")}` : null,
+      ].filter(Boolean).join(" · "),
+    };
+  });
+
+  const total = linhas.reduce((s, l) => s + l.subtotal, 0);
+  const count = linhas.reduce((s, l) => s + l.qty, 0);
 
   const handleEdit = () => navigate({ to: "/menu" });
 
   const handleDelete = () => {
     sessionStorage.removeItem("massalab.order");
-    toast.success("Pedido excluído.");
+    toast.success("Pedido excluido.");
     navigate({ to: "/menu" });
   };
 
   const handleConfirm = async () => {
     if (!order || count === 0) { toast.error("Pedido vazio."); return; }
-    if (!user) { toast.error("Faça login para confirmar o pedido."); return; }
+    if (!user) { toast.error("Faca login para confirmar o pedido."); return; }
 
     setSubmitting(true);
     try {
-      // Descobre o ID da mesa pelo número informado
       const mesasData = await apiFetch<{ mesas: { id: number; numero: number }[] }>(
         `/restaurante/${user.restauranteId}/mesas`
       );
       const mesa = mesasData.mesas.find((m) => m.numero === parseInt(order.tableNumber, 10));
+
+      // Monta o array de itens no formato que o Laravel espera
+      const itens = order.cart.map((line) => {
+        if (line.tipo === "item") {
+          return { item_id: line.itemId, quantidade: line.quantidade };
+        }
+        // monte_massa
+        return {
+          item_id: line.massaId,
+          quantidade: line.quantidade,
+          customizacoes: {
+            molho_id: line.molhoId ?? undefined,
+            ingredientes_ids: line.ingredientesIds,
+          },
+        };
+      });
 
       const data = await apiFetch<{ pedido: { id: number; codigo_fila: number } }>(
         `/restaurante/${user.restauranteId}/pedidos`,
@@ -88,10 +131,7 @@ function OrderSummaryPage() {
           body: {
             modalidade: mesa ? "mesa" : "retirada",
             mesa_id: mesa?.id ?? null,
-            itens: cartItems.map((i) => ({
-              item_id: i.id,
-              quantidade: i.qty,
-            })),
+            itens,
           },
         }
       );
@@ -123,9 +163,9 @@ function OrderSummaryPage() {
       <main className="flex min-h-screen items-center justify-center bg-secondary px-4">
         <div className="w-full max-w-md rounded-xl border border-border bg-card p-8 text-center shadow-[var(--shadow-elegant)]">
           <h1 className="text-2xl font-bold text-foreground">Nenhum pedido em aberto</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Volte ao cardápio e selecione seus itens.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Volte ao cardapio e selecione seus itens.</p>
           <Button className="mt-6 w-full" onClick={() => navigate({ to: "/menu" })} style={{ background: "var(--gradient-primary)" }}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Ir para o cardápio
+            <ArrowLeft className="mr-2 h-4 w-4" /> Ir para o cardapio
           </Button>
         </div>
       </main>
@@ -148,13 +188,14 @@ function OrderSummaryPage() {
 
       <section className="mx-auto max-w-3xl px-4 py-6">
         <ul className="space-y-3">
-          {cartItems.map((i) => (
-            <li key={i.id} className="flex items-start justify-between gap-4 rounded-xl border border-border bg-card p-4">
+          {linhas.map((l) => (
+            <li key={l.id} className="flex items-start justify-between gap-4 rounded-xl border border-border bg-card p-4">
               <div className="flex-1">
-                <h3 className="font-semibold text-foreground">{i.nome}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">{i.qty} × R$ {parseFloat(i.preco).toFixed(2)}</p>
+                <h3 className="font-semibold text-foreground">{l.nome}</h3>
+                {l.detalhe && <p className="mt-1 text-xs text-muted-foreground">{l.detalhe}</p>}
+                <p className="mt-2 text-sm text-muted-foreground">{l.qty} × R$ {l.preco.toFixed(2)}</p>
               </div>
-              <span className="whitespace-nowrap font-bold text-primary">R$ {(parseFloat(i.preco) * i.qty).toFixed(2)}</span>
+              <span className="whitespace-nowrap font-bold text-primary">R$ {l.subtotal.toFixed(2)}</span>
             </li>
           ))}
         </ul>
