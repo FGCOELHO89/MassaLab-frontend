@@ -13,6 +13,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PedidoConfirmadoRouteImport } from './routes/pedido-confirmado'
 import { Route as PedidoRouteImport } from './routes/pedido'
 import { Route as MenuRouteImport } from './routes/menu'
+import { Route as GerenteRouteImport } from './routes/gerente'
 import { Route as GarcomRouteImport } from './routes/garcom'
 import { Route as CozinhaRouteImport } from './routes/cozinha'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -36,6 +37,11 @@ const PedidoRoute = PedidoRouteImport.update({
 const MenuRoute = MenuRouteImport.update({
   id: '/menu',
   path: '/menu',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GerenteRoute = GerenteRouteImport.update({
+  id: '/gerente',
+  path: '/gerente',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GarcomRoute = GarcomRouteImport.update({
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/cozinha': typeof CozinhaRoute
   '/garcom': typeof GarcomRoute
+  '/gerente': typeof GerenteRoute
   '/menu': typeof MenuRoute
   '/pedido': typeof PedidoRoute
   '/pedido-confirmado': typeof PedidoConfirmadoRoute
@@ -74,6 +81,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/cozinha': typeof CozinhaRoute
   '/garcom': typeof GarcomRoute
+  '/gerente': typeof GerenteRoute
   '/menu': typeof MenuRoute
   '/pedido': typeof PedidoRoute
   '/pedido-confirmado': typeof PedidoConfirmadoRoute
@@ -85,6 +93,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/cozinha': typeof CozinhaRoute
   '/garcom': typeof GarcomRoute
+  '/gerente': typeof GerenteRoute
   '/menu': typeof MenuRoute
   '/pedido': typeof PedidoRoute
   '/pedido-confirmado': typeof PedidoConfirmadoRoute
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/cozinha'
     | '/garcom'
+    | '/gerente'
     | '/menu'
     | '/pedido'
     | '/pedido-confirmado'
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/cozinha'
     | '/garcom'
+    | '/gerente'
     | '/menu'
     | '/pedido'
     | '/pedido-confirmado'
@@ -117,6 +128,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/cozinha'
     | '/garcom'
+    | '/gerente'
     | '/menu'
     | '/pedido'
     | '/pedido-confirmado'
@@ -128,6 +140,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CozinhaRoute: typeof CozinhaRoute
   GarcomRoute: typeof GarcomRoute
+  GerenteRoute: typeof GerenteRoute
   MenuRoute: typeof MenuRoute
   PedidoRoute: typeof PedidoRoute
   PedidoConfirmadoRoute: typeof PedidoConfirmadoRoute
@@ -162,6 +175,13 @@ declare module '@tanstack/react-router' {
       path: '/menu'
       fullPath: '/menu'
       preLoaderRoute: typeof MenuRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gerente': {
+      id: '/gerente'
+      path: '/gerente'
+      fullPath: '/gerente'
+      preLoaderRoute: typeof GerenteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/garcom': {
@@ -200,6 +220,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CozinhaRoute: CozinhaRoute,
   GarcomRoute: GarcomRoute,
+  GerenteRoute: GerenteRoute,
   MenuRoute: MenuRoute,
   PedidoRoute: PedidoRoute,
   PedidoConfirmadoRoute: PedidoConfirmadoRoute,

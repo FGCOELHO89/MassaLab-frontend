@@ -1,4 +1,4 @@
-﻿import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { apiFetch, ApiError, setToken, setStoredUser, getToken, type AppRole } from "@/lib/api";
@@ -45,6 +45,7 @@ const loginSchema = z.object({
 function redirectByRole(role: AppRole, navigate: ReturnType<typeof useNavigate>) {
   if (role === "garcom") navigate({ to: "/garcom" });
   else if (role === "cozinha") navigate({ to: "/cozinha" });
+  else if (role === "gerente" || role === "admin") navigate({ to: "/gerente" });
   else navigate({ to: "/menu" });
 }
 

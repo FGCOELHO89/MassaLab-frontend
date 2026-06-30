@@ -6,7 +6,7 @@ const API_BASE_URL = "http://localhost/api";
 const TOKEN_KEY = "massalab.token";
 const USER_KEY = "massalab.user";
 
-export type AppRole = "cliente" | "garcom" | "cozinha" | "gerencia";
+export type AppRole = "cliente" | "garcom" | "cozinha" | "gerente" | "admin";
 
 export type AuthUser = {
   id: number;
