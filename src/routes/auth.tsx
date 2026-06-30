@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+﻿import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { apiFetch, ApiError, setToken, setStoredUser, getToken, type AppRole } from "@/lib/api";
@@ -54,6 +54,7 @@ function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [signupRole, setSignupRole] = useState<SignupRole>("cliente");
   const [loginAsFuncionario, setLoginAsFuncionario] = useState(false);
+  const [aceitouPrivacidade, setAceitouPrivacidade] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
@@ -91,9 +92,12 @@ function AuthPage() {
 
   const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!aceitouPrivacidade) {
+      toast.error("Voce precisa aceitar a politica de privacidade.");
+      return;
+    }
     const fd = new FormData(e.currentTarget);
     const isFuncionario = FUNCIONARIO_ROLES.includes(signupRole);
-
     if (isFuncionario) {
       const parsed = signupFuncionarioSchema.safeParse({
         nome: fd.get("fullName"),
@@ -119,6 +123,8 @@ function AuthPage() {
             senha_confirmation: parsed.data.senha,
             papel: parsed.data.papel,
             codigo_cadastro_funcionario: parsed.data.codigo,
+            codigo_cadastro_funcionario: parsed.data.codigo,
+            aceitou_privacidade: true,
           },
         });
         toast.success("Conta criada! Faca login para continuar.");
@@ -150,6 +156,8 @@ function AuthPage() {
           email: parsed.data.email,
           senha: parsed.data.senha,
           senha_confirmation: parsed.data.senha,
+          senha_confirmation: parsed.data.senha,
+          aceitou_privacidade: true,
         },
       });
       toast.success("Conta criada! Faca login para continuar.");
@@ -364,6 +372,23 @@ function AuthPage() {
                     </p>
                   </div>
                 )}
+
+                <label className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={aceitouPrivacidade}
+                    onChange={(e) => setAceitouPrivacidade(e.target.checked)}
+                    className="mt-0.5"
+                    required
+                  />
+                  <span>
+                    Li e aceito a{" "}
+                    <Link to="/privacidade" target="_blank" className="text-primary underline">
+                      Política de Privacidade
+                    </Link>
+                  </span>
+                </label>
+
                 <Button type="submit" disabled={loading} className="w-full">
                   {loading ? "Criando..." : "Criar conta"}
                 </Button>
