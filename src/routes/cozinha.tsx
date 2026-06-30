@@ -18,6 +18,7 @@ type KdsItem = {
   quantidade: number;
   status: string;
   observacoes: string | null;
+  customizacoes: string[];
 };
 
 type KdsOrder = {
@@ -167,6 +168,11 @@ function KitchenPage() {
                               <span className="font-semibold">{it.quantidade}x</span> {it.nome}
                               {it.observacoes && (
                                 <span className="text-xs text-muted-foreground"> ({it.observacoes})</span>
+                              )}
+                              {it.customizacoes && it.customizacoes.length > 0 && (
+                                <p className="text-xs text-muted-foreground pl-4">
+                                  {it.customizacoes.join(", ")}
+                                </p>
                               )}
                             </li>
                           ))}

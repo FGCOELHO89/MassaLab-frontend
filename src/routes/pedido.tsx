@@ -26,7 +26,7 @@ type CartLine =
       massaNome: string;
       molhoId: number | null;
       molhoNome: string | null;
-      ingredientesIds: number[];
+      ingredientes: { ingrediente_id: number; quantidade: number }[];
       ingredientesNomes: string[];
       precoUnitario: number;
       quantidade: number;
@@ -119,7 +119,7 @@ function OrderSummaryPage() {
           quantidade: line.quantidade,
           customizacoes: {
             molho_id: line.molhoId ?? undefined,
-            ingredientes_ids: line.ingredientesIds,
+            ingredientes: line.ingredientes,
           },
         };
       });

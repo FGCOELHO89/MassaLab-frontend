@@ -43,7 +43,7 @@ export type MonteMassaResult = {
   massaNome: string;
   molhoId: number | null;
   molhoNome: string | null;
-  ingredientesIds: number[];
+  ingredientes: { ingrediente_id: number; quantidade: number }[];
   ingredientesNomes: string[];
   precoTotal: number;
 };
@@ -77,18 +77,17 @@ export function MonteMassaModal({ open, onClose, restauranteId, onConfirm }: Pro
       .finally(() => setLoading(false));
   }, [open, restauranteId]);
 
-  // IDs selecionados (quantidade >= 1), expandidos pela quantidade
-  const ingredientesIds = useMemo(() => {
-    const ids: number[] = [];
-    for (const [id, qty] of Object.entries(ingredientesQtd)) {
-      for (let i = 0; i < qty; i++) ids.push(Number(id));
-    }
-    return ids;
+  // Lista de {ingrediente_id, quantidade} - um item por ingrediente, sem repeticao
+  const ingredientesSelecionados = useMemo(() => {
+    return Object.entries(ingredientesQtd)
+      .filter(([, qty]) => qty > 0)
+      .map(([id, qty]) => ({ ingrediente_id: Number(id), quantidade: qty }));
   }, [ingredientesQtd]);
 
-  const totalSelecionados = useMemo(() =>
-    Object.values(ingredientesQtd).reduce((s, q) => s + q, 0),
-    [ingredientesQtd]
+  // Total de unidades (soma das quantidades) - usado para contar "X / 8 inclusos"
+  const totalUnidades = useMemo(
+    () => ingredientesSelecionados.reduce((s, i) => s + i.quantidade, 0),
+    [ingredientesSelecionados]
   );
 
   // Recalcula sempre que a seleção mudar
@@ -97,12 +96,15 @@ export function MonteMassaModal({ open, onClose, restauranteId, onConfirm }: Pro
     setCalculando(true);
     const params = new URLSearchParams();
     params.append("massa_id", String(massaId));
-    ingredientesIds.forEach((id) => params.append("ingredientes_ids[]", String(id)));
+    ingredientesSelecionados.forEach((item, idx) => {
+      params.append(`ingredientes[${idx}][ingrediente_id]`, String(item.ingrediente_id));
+      params.append(`ingredientes[${idx}][quantidade]`, String(item.quantidade));
+    });
 
     apiFetch<CalculoResultado>(`/restaurante/${restauranteId}/monte-massa/calcular?${params.toString()}`)
       .then(setCalculo)
       .finally(() => setCalculando(false));
-  }, [massaId, ingredientesIds, restauranteId]);
+  }, [massaId, ingredientesSelecionados, restauranteId]);
 
   const toggleIngrediente = (id: number) => {
     setIngredientesQtd((prev) => {
@@ -143,14 +145,14 @@ export function MonteMassaModal({ open, onClose, restauranteId, onConfirm }: Pro
     if (!massaSelecionada || !calculo) return;
     const ingredientesNomes = (options?.ingredientes ?? [])
       .filter((i) => ingredientesQtd[i.id])
-      .flatMap((i) => Array(ingredientesQtd[i.id]).fill(i.nome));
+      .map((i) => `${i.nome}${ingredientesQtd[i.id] > 1 ? ` x${ingredientesQtd[i.id]}` : ""}`);
 
     onConfirm({
       massaId: massaSelecionada.id,
       massaNome: massaSelecionada.nome,
       molhoId: molhoSelecionado?.id ?? null,
       molhoNome: molhoSelecionado?.nome ?? null,
-      ingredientesIds,
+      ingredientes: ingredientesSelecionados,
       ingredientesNomes,
       precoTotal: calculo.total,
     });
@@ -203,7 +205,7 @@ export function MonteMassaModal({ open, onClose, restauranteId, onConfirm }: Pro
               <div className="mb-2 flex items-center justify-between">
                 <Label>Ingredientes</Label>
                 <Badge variant="secondary">
-                  {totalSelecionados} / {options.max_ingredientes_inclusos} inclusos
+                  {totalUnidades} / {options.max_ingredientes_inclusos} inclusos
                 </Badge>
               </div>
               <div className="space-y-2">
