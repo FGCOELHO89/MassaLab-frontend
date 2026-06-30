@@ -92,7 +92,7 @@ function ManagerPage() {
       navigate({ to: "/auth" });
       return;
     }
-    if (role !== "gerencia" && role !== "admin") {
+    if (role !== "gerente" && role !== "admin") {
       toast.error("Acesso restrito a gerentes.");
       navigate({ to: "/" });
       return;
