@@ -5,13 +5,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Minus, Plus } from "lucide-react";
 
 type MonteMassaItem = {
   id: number;
   nome: string;
   descricao: string | null;
   preco?: string;
-  imagem_url: string | null;
 };
 
 type MonteMassaIngrediente = {
@@ -60,7 +60,8 @@ export function MonteMassaModal({ open, onClose, restauranteId, onConfirm }: Pro
   const [loading, setLoading] = useState(true);
   const [massaId, setMassaId] = useState<number | null>(null);
   const [molhoId, setMolhoId] = useState<number | null>(null);
-  const [ingredientesIds, setIngredientesIds] = useState<number[]>([]);
+  // Mapa de ingredienteId -> quantidade (0 = não selecionado)
+  const [ingredientesQtd, setIngredientesQtd] = useState<Record<number, number>>({});
   const [calculo, setCalculo] = useState<CalculoResultado | null>(null);
   const [calculando, setCalculando] = useState(false);
 
@@ -76,7 +77,21 @@ export function MonteMassaModal({ open, onClose, restauranteId, onConfirm }: Pro
       .finally(() => setLoading(false));
   }, [open, restauranteId]);
 
-  // Recalcula o preço sempre que a seleção mudar
+  // IDs selecionados (quantidade >= 1), expandidos pela quantidade
+  const ingredientesIds = useMemo(() => {
+    const ids: number[] = [];
+    for (const [id, qty] of Object.entries(ingredientesQtd)) {
+      for (let i = 0; i < qty; i++) ids.push(Number(id));
+    }
+    return ids;
+  }, [ingredientesQtd]);
+
+  const totalSelecionados = useMemo(() =>
+    Object.values(ingredientesQtd).reduce((s, q) => s + q, 0),
+    [ingredientesQtd]
+  );
+
+  // Recalcula sempre que a seleção mudar
   useEffect(() => {
     if (!massaId) return;
     setCalculando(true);
@@ -90,9 +105,29 @@ export function MonteMassaModal({ open, onClose, restauranteId, onConfirm }: Pro
   }, [massaId, ingredientesIds, restauranteId]);
 
   const toggleIngrediente = (id: number) => {
-    setIngredientesIds((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
+    setIngredientesQtd((prev) => {
+      if (prev[id]) {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      }
+      return { ...prev, [id]: 1 };
+    });
+  };
+
+  const addQtd = (id: number) => {
+    setIngredientesQtd((prev) => ({ ...prev, [id]: (prev[id] ?? 1) + 1 }));
+  };
+
+  const subQtd = (id: number) => {
+    setIngredientesQtd((prev) => {
+      if ((prev[id] ?? 1) <= 1) {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      }
+      return { ...prev, [id]: prev[id] - 1 };
+    });
   };
 
   const massaSelecionada = useMemo(
@@ -107,8 +142,8 @@ export function MonteMassaModal({ open, onClose, restauranteId, onConfirm }: Pro
   const handleConfirm = () => {
     if (!massaSelecionada || !calculo) return;
     const ingredientesNomes = (options?.ingredientes ?? [])
-      .filter((i) => ingredientesIds.includes(i.id))
-      .map((i) => i.nome);
+      .filter((i) => ingredientesQtd[i.id])
+      .flatMap((i) => Array(ingredientesQtd[i.id]).fill(i.nome));
 
     onConfirm({
       massaId: massaSelecionada.id,
@@ -120,8 +155,7 @@ export function MonteMassaModal({ open, onClose, restauranteId, onConfirm }: Pro
       precoTotal: calculo.total,
     });
 
-    // Reset para a próxima vez que abrir
-    setIngredientesIds([]);
+    setIngredientesQtd({});
   };
 
   return (
@@ -139,28 +173,16 @@ export function MonteMassaModal({ open, onClose, restauranteId, onConfirm }: Pro
               <Label className="mb-2 block">Escolha a massa</Label>
               <div className="space-y-2">
                 {options.massas.map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => setMassaId(m.id)}
-                    className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm transition ${
-                      massaId === m.id
-                        ? "border-primary bg-primary/10"
-                        : "border-border hover:bg-muted"
-                    }`}
-                  >
+                  <button key={m.id} type="button" onClick={() => setMassaId(m.id)}
+                    className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm transition ${massaId === m.id ? "border-primary bg-primary/10" : "border-border hover:bg-muted"}`}>
                     <span>
                       <span className="font-medium">{m.nome}</span>
-                      {m.descricao && (
-                        <span className="block text-xs text-muted-foreground">{m.descricao}</span>
-                      )}
+                      {m.descricao && <span className="block text-xs text-muted-foreground">{m.descricao}</span>}
                     </span>
                     <span className="font-semibold text-primary">R$ {Number(m.preco ?? 0).toFixed(2)}</span>
                   </button>
                 ))}
-                {options.massas.length === 0 && (
-                  <p className="text-sm text-muted-foreground">Nenhuma massa disponivel.</p>
-                )}
+                {options.massas.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma massa disponivel.</p>}
               </div>
             </div>
 
@@ -168,22 +190,12 @@ export function MonteMassaModal({ open, onClose, restauranteId, onConfirm }: Pro
               <Label className="mb-2 block">Escolha o molho</Label>
               <div className="space-y-2">
                 {options.molhos.map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => setMolhoId(m.id)}
-                    className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm transition ${
-                      molhoId === m.id
-                        ? "border-primary bg-primary/10"
-                        : "border-border hover:bg-muted"
-                    }`}
-                  >
+                  <button key={m.id} type="button" onClick={() => setMolhoId(m.id)}
+                    className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm transition ${molhoId === m.id ? "border-primary bg-primary/10" : "border-border hover:bg-muted"}`}>
                     <span className="font-medium">{m.nome}</span>
                   </button>
                 ))}
-                {options.molhos.length === 0 && (
-                  <p className="text-sm text-muted-foreground">Nenhum molho disponivel.</p>
-                )}
+                {options.molhos.length === 0 && <p className="text-sm text-muted-foreground">Nenhum molho disponivel.</p>}
               </div>
             </div>
 
@@ -191,28 +203,36 @@ export function MonteMassaModal({ open, onClose, restauranteId, onConfirm }: Pro
               <div className="mb-2 flex items-center justify-between">
                 <Label>Ingredientes</Label>
                 <Badge variant="secondary">
-                  {ingredientesIds.length} / {options.max_ingredientes_inclusos} inclusos
+                  {totalSelecionados} / {options.max_ingredientes_inclusos} inclusos
                 </Badge>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-2">
                 {options.ingredientes.map((ing) => {
-                  const checked = ingredientesIds.includes(ing.id);
+                  const qty = ingredientesQtd[ing.id] ?? 0;
+                  const checked = qty > 0;
                   return (
-                    <label
-                      key={ing.id}
-                      className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition cursor-pointer ${
-                        checked ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
-                      }`}
-                    >
+                    <div key={ing.id}
+                      className={`flex items-center gap-3 rounded-md border px-3 py-2 text-sm transition ${checked ? "border-primary bg-primary/10" : "border-border"}`}>
                       <Checkbox checked={checked} onCheckedChange={() => toggleIngrediente(ing.id)} />
-                      <span className="flex-1">{ing.nome}</span>
+                      <span className="flex-1 font-medium">{ing.nome}</span>
                       <span className="text-xs text-muted-foreground">R$ {Number(ing.preco).toFixed(2)}</span>
-                    </label>
+                      {checked && (
+                        <div className="flex items-center gap-1">
+                          <button type="button" onClick={() => subQtd(ing.id)}
+                            className="flex h-6 w-6 items-center justify-center rounded border border-border bg-background hover:bg-muted">
+                            <Minus className="h-3 w-3" />
+                          </button>
+                          <span className="min-w-[1.5rem] text-center text-sm font-semibold">{qty}</span>
+                          <button type="button" onClick={() => addQtd(ing.id)}
+                            className="flex h-6 w-6 items-center justify-center rounded border border-border bg-background hover:bg-muted">
+                            <Plus className="h-3 w-3" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
-                {options.ingredientes.length === 0 && (
-                  <p className="col-span-2 text-sm text-muted-foreground">Nenhum ingrediente disponivel.</p>
-                )}
+                {options.ingredientes.length === 0 && <p className="text-sm text-muted-foreground">Nenhum ingrediente disponivel.</p>}
               </div>
             </div>
 
@@ -238,9 +258,7 @@ export function MonteMassaModal({ open, onClose, restauranteId, onConfirm }: Pro
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancelar
-          </Button>
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
           <Button onClick={handleConfirm} disabled={!massaSelecionada || !calculo || calculando}>
             Adicionar ao carrinho
           </Button>

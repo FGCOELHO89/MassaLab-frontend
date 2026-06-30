@@ -68,7 +68,7 @@ function MenuPage() {
       .then((data) => {
         // Itens do tipo monte_massa nao aparecem como cards individuais no
         // cardapio comum - eles sao escolhidos dentro do modal proprio.
-        const allItems = data.itens.filter((i) => i.disponivel && i.tipo !== "monte_massa");
+        const allItems = data.itens.filter((i) => i.disponivel && i.tipo !== "monte_massa" && i.categoria?.nome !== "Molhos");
         const catMap = new Map<string, ApiItem[]>();
         for (const item of allItems) {
           const cat = item.categoria?.nome ?? "Outros";
@@ -245,6 +245,9 @@ function MenuPage() {
           </div>
           <Button type="submit" className="mt-6 w-full" style={{ background: "var(--gradient-primary)" }}>
             Ver cardapio
+          </Button>
+          <Button variant="ghost" className="mt-3 w-full" onClick={handleLogout}>
+            <LogOut className="mr-2 h-4 w-4" /> Sair
           </Button>
         </form>
       </main>
