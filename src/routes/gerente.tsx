@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+﻿import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch, clearToken, ApiError } from "@/lib/api";
 import { useRole } from "@/hooks/use-role";
@@ -22,6 +22,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { EstoqueTab } from "@/components/EstoqueTab";
 
 export const Route = createFileRoute("/gerente")({
   head: () => ({ meta: [{ title: "Painel do gerente | MassaLab" }] }),
@@ -60,6 +61,7 @@ function ManagerPage() {
   const { role, loading } = useRole();
   const navigate = useNavigate();
   const [restauranteId, setRestauranteId] = useState<number | null>(null);
+  const [abaSelecionada, setAbaSelecionada] = useState<"cardapio" | "estoque">("cardapio");
 
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [itens, setItens] = useState<ItemCardapio[]>([]);
@@ -287,7 +289,7 @@ function ManagerPage() {
       </header>
 
       <section className="mx-auto max-w-6xl px-4 py-6">
-        <h2 className="mb-6 text-2xl font-bold text-foreground">Gerenciar cardapio</h2>
+        <div className="mb-6 flex gap-2"><button onClick={() => setAbaSelecionada("cardapio")} className={"rounded-md border px-4 py-2 text-sm font-medium transition " + (abaSelecionada === "cardapio" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:bg-muted")}>Cardapio</button><button onClick={() => setAbaSelecionada("estoque")} className={"rounded-md border px-4 py-2 text-sm font-medium transition " + (abaSelecionada === "estoque" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:bg-muted")}>Estoque</button></div>{abaSelecionada === "estoque" && restauranteId && <EstoqueTab restauranteId={restauranteId} />}{abaSelecionada === "cardapio" && (<><h2 className="mb-6 text-2xl font-bold text-foreground">Gerenciar cardapio</h2>
 
         {/* Categorias */}
         <div className="mb-8">
@@ -345,7 +347,7 @@ function ManagerPage() {
                       {item.ativo && !item.disponivel && <Badge variant="outline">indisponivel</Badge>}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {item.categoria?.nome ?? "Sem categoria"} · R$ {Number(item.preco).toFixed(2)}
+                      {item.categoria?.nome ?? "Sem categoria"} Â· R$ {Number(item.preco).toFixed(2)}
                     </p>
                   </div>
                   <div className="flex gap-1">
@@ -367,6 +369,8 @@ function ManagerPage() {
             </ul>
           )}
         </div>
+        </>
+        )}
       </section>
 
       {/* Modal categoria */}
