@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { EstoqueTab } from "@/components/EstoqueTab";
 import { MesasTab } from "@/components/MesasTab";
+import { FuncionariosTab } from "@/components/FuncionariosTab";
 
 export const Route = createFileRoute("/gerente")({
   head: () => ({ meta: [{ title: "Painel do gerente | MassaLab" }] }),
@@ -59,10 +60,10 @@ const TIPOS_CATEGORIA = [
 ];
 
 function ManagerPage() {
-  const { role, loading } = useRole();
+  const { role, loading, user } = useRole();
   const navigate = useNavigate();
   const [restauranteId, setRestauranteId] = useState<number | null>(null);
-  const [abaSelecionada, setAbaSelecionada] = useState<"cardapio" | "estoque" | "mesas">("cardapio");
+  const [abaSelecionada, setAbaSelecionada] = useState<"cardapio" | "estoque" | "mesas" | "funcionarios">("cardapio");
 
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [itens, setItens] = useState<ItemCardapio[]>([]);
@@ -290,7 +291,7 @@ function ManagerPage() {
       </header>
 
       <section className="mx-auto max-w-6xl px-4 py-6">
-        <div className="mb-6 flex gap-2"><button onClick={() => setAbaSelecionada("cardapio")} className={"rounded-md border px-4 py-2 text-sm font-medium transition " + (abaSelecionada === "cardapio" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:bg-muted")}>Cardapio</button><button onClick={() => setAbaSelecionada("estoque")} className={"rounded-md border px-4 py-2 text-sm font-medium transition " + (abaSelecionada === "estoque" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:bg-muted")}>Estoque</button><button onClick={() => setAbaSelecionada("mesas")} className={"rounded-md border px-4 py-2 text-sm font-medium transition " + (abaSelecionada === "mesas" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:bg-muted")}>Mesas</button></div>{abaSelecionada === "estoque" && restauranteId && <EstoqueTab restauranteId={restauranteId} />}{abaSelecionada === "mesas" && restauranteId && <MesasTab restauranteId={restauranteId} />}{abaSelecionada === "cardapio" && (<><h2 className="mb-6 text-2xl font-bold text-foreground">Gerenciar cardapio</h2>
+        <div className="mb-6 flex gap-2"><button onClick={() => setAbaSelecionada("cardapio")} className={"rounded-md border px-4 py-2 text-sm font-medium transition " + (abaSelecionada === "cardapio" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:bg-muted")}>Cardapio</button><button onClick={() => setAbaSelecionada("estoque")} className={"rounded-md border px-4 py-2 text-sm font-medium transition " + (abaSelecionada === "estoque" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:bg-muted")}>Estoque</button><button onClick={() => setAbaSelecionada("mesas")} className={"rounded-md border px-4 py-2 text-sm font-medium transition " + (abaSelecionada === "mesas" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:bg-muted")}>Mesas</button><button onClick={() => setAbaSelecionada("funcionarios")} className={"rounded-md border px-4 py-2 text-sm font-medium transition " + (abaSelecionada === "funcionarios" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:bg-muted")}>Funcionarios</button></div>{abaSelecionada === "estoque" && restauranteId && <EstoqueTab restauranteId={restauranteId} />}{abaSelecionada === "mesas" && restauranteId && <MesasTab restauranteId={restauranteId} />}{abaSelecionada === "funcionarios" && restauranteId && user && <FuncionariosTab restauranteId={restauranteId} currentUserId={user.id} />}{abaSelecionada === "cardapio" && (<><h2 className="mb-6 text-2xl font-bold text-foreground">Gerenciar cardapio</h2>
 
         {/* Categorias */}
         <div className="mb-8">
